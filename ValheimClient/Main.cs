@@ -11,7 +11,14 @@ namespace ValheimClient
 {
     public class Main : MonoBehaviour
     {
-        public static Texture2D texture;
+        public static GUIStyle MenuItemStyle;
+
+        public static Texture2D textureEnemy;
+        public static Texture2D texturePlayer;
+        public static Texture2D textureItem;
+        public static GUIStyle enemyTextStyle;
+
+        private bool menuOpen = false;
         private List<Player> players = new List<Player>();
         private List<MonsterAI> monsters = new List<MonsterAI>();
         private List<Container> containers = new List<Container>();
@@ -21,10 +28,13 @@ namespace ValheimClient
         private List<Pickable> pickables = new List<Pickable>();
         private List<PickableItem> pickableItems = new List<PickableItem>();
 
+        private List<Vegvisir> bossStones = new List<Vegvisir>();
+
         private string[] pickablesList = { "thistle" };
 
         private Vector3 savedLocation = new Vector3();
         private bool godMode = false;
+        private Player localPlayer;
 
         private bool _containerESP = false;
         private bool _playerESP = false;
@@ -34,214 +44,357 @@ namespace ValheimClient
 
         private Camera camera;
 
+        public Smelter smelter1;
+        public bool smelterHack = false;
+        public int m_maxOre = 10;
+        public int m_maxFuel = 10;
+        public int m_fuelPerProduct = 1;
+        public float m_secPerProduct = 10f;
+
+        public float m_fermentationDuration = 2400f;
 
         public void Start()
         {
             MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, ":)");
 
             camera = Camera.main;
+            localPlayer = Player.m_localPlayer;
 
-            texture = new Texture2D(2, 2, TextureFormat.ARGB32, false);
-            texture.SetPixel(0, 0, Color.green);
-            texture.SetPixel(1, 0, Color.green);
-            texture.SetPixel(0, 1, Color.green);
-            texture.SetPixel(1, 1, Color.green);
-            texture.Apply();
+            textureEnemy = new Texture2D(2, 2, TextureFormat.ARGB32, false);
+            textureEnemy.SetPixel(0, 0, UnityEngine.Color.red);
+            textureEnemy.SetPixel(1, 0, UnityEngine.Color.red);
+            textureEnemy.SetPixel(0, 1, UnityEngine.Color.red);
+            textureEnemy.SetPixel(1, 1, UnityEngine.Color.red);
+            textureEnemy.Apply();
+
+            texturePlayer = new Texture2D(2, 2, TextureFormat.ARGB32, false);
+            texturePlayer.SetPixel(0, 0, UnityEngine.Color.white);
+            texturePlayer.SetPixel(1, 0, UnityEngine.Color.white);
+            texturePlayer.SetPixel(0, 1, UnityEngine.Color.white);
+            texturePlayer.SetPixel(1, 1, UnityEngine.Color.white);
+            texturePlayer.Apply();
+
+            textureItem = new Texture2D(2, 2, TextureFormat.ARGB32, false);
+            textureItem.SetPixel(0, 0, UnityEngine.Color.green);
+            textureItem.SetPixel(1, 0, UnityEngine.Color.green);
+            textureItem.SetPixel(0, 1, UnityEngine.Color.green);
+            textureItem.SetPixel(1, 1, UnityEngine.Color.green);
+            textureItem.Apply();
+
+            //enemyTextStyle = new GUIStyle(GUI.skin.label);
+            //enemyTextStyle.fontSize = 12;
+            //enemyTextStyle.alignment = TextAnchor.MiddleCenter;
+            //enemyTextStyle.normal.textColor = Color.red;
 
             // Calls LoadObjects every second instead of every frame.
             InvokeRepeating("LoadObjects", 1f, 1f);
         }
 
+        public void OnDestroy()
+        {
+            Loader.Unload();
+        }
+
         public void Update()
         {
-            try
+            if (Input.GetKeyDown(KeyCode.Insert))
             {
-                if (Input.GetKeyDown(KeyCode.Insert))
-                {
-                    _containerESP = !_containerESP;
-                    MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Containers: " + _containerESP.ToString());
-                }
-
-                if (Input.GetKeyDown(KeyCode.Delete))
-                {
-                    _playerESP = !_playerESP;
-                    MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Players: " + _playerESP.ToString());
-                }
-
-                if (Input.GetKeyDown(KeyCode.Home))
-                {
-                    _monsterESP = !_monsterESP;
-                    MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Monsters: " + _monsterESP.ToString());
-                }
-
-                if (Input.GetKeyDown(KeyCode.End))
-                {
-                    Loader.Unload();
-                    MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, ":(");
-                }
-
-                if (Input.GetKeyDown(KeyCode.Keypad8))
-                {
-                    if (Player.m_localPlayer)
-                    {
-                        Player.m_localPlayer.transform.position += Player.m_localPlayer.transform.forward * 20f;
-                    }
-                }
-
-                if (Input.GetKeyDown(KeyCode.Keypad6))
-                {
-                    if (Player.m_localPlayer)
-                    {
-                        Player.m_localPlayer.transform.position += Player.m_localPlayer.transform.right * 20f;
-                    }
-                }
-
-                if (Input.GetKeyDown(KeyCode.Keypad4))
-                {
-                    if (Player.m_localPlayer)
-                    {
-                        Player.m_localPlayer.transform.position += Player.m_localPlayer.transform.right * -20f;
-                    }
-                }
-
-                if (Input.GetKeyDown(KeyCode.Keypad2))
-                {
-                    if (Player.m_localPlayer)
-                    {
-                        Player.m_localPlayer.transform.position += Player.m_localPlayer.transform.forward * -20f;
-                    }
-                }
-
-                if (Input.GetKeyDown(KeyCode.PageUp))
-                {
-                    _rockESP = !_rockESP;
-                    MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Rocks: " + _rockESP.ToString());
-                }
-
-                if (Input.GetKeyDown(KeyCode.PageDown))
-                {
-                    _pickableESP = !_pickableESP;
-                    MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Pickables: " + _pickableESP.ToString());
-                }
-
-                if (Input.GetKey(KeyCode.Keypad0))
-                {
-                    if (Player.m_localPlayer)
-                    {
-                        Player.m_localPlayer.Heal(Player.m_localPlayer.GetMaxHealth(), true);
-                        MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, "Healed");
-                    }
-                }
-
-                if (Input.GetKeyDown(KeyCode.Keypad1))
-                {
-                    if (Player.m_localPlayer)
-                    {
-                        Player.m_localPlayer.m_staminaRegen = Player.m_localPlayer.m_staminaRegen * 2f;
-                    }
-                }
-
-                if (Input.GetKeyDown(KeyCode.Keypad3))
-                {
-                    // Save Location
-                    if (Player.m_localPlayer)
-                    {
-                        savedLocation = Player.m_localPlayer.transform.position;
-                        MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, "Location saved!");
-                    }
-                }
-
-                if (Input.GetKeyDown(KeyCode.Keypad5))
-                {
-                    if (Player.m_localPlayer && savedLocation != null)
-                    {
-                        // Teleport to saved location
-                        float x = savedLocation.x;
-                        float z = savedLocation.z;
-
-                        Vector3 pos2 = new Vector3(x, Player.m_localPlayer.transform.position.y, z);
-                        Player.m_localPlayer.TeleportTo(pos2, Player.m_localPlayer.transform.rotation, true);
-                    }
-                }
-
-                if (Input.GetKeyDown(KeyCode.Keypad7))
-                {
-                    if (Player.m_localPlayer)
-                    {
-                        godMode = !godMode;
-                        Player.m_localPlayer.SetGodMode(godMode);
-                        MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, "God Mode " + godMode.ToString());
-                    }
-                }
-
-                if (Input.GetKeyDown(KeyCode.Keypad9))
-                {
-                    if (Player.m_localPlayer)
-                    {
-                        MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, Player.m_localPlayer.transform.position.ToString("F3"));
-                    }
-                }
-
-                //if (Input.GetKeyDown(KeyCode.KeypadDivide))
-                //{
-                //    if (Player.m_localPlayer)
-                //    {
-                //        traders = GameObject.FindObjectsOfType<Trader>().ToList();
-
-                //        if (traders?.Count > 0)
-                //        {
-                //            float x = traders.First().transform.position.x;
-                //            float z = traders.First().transform.position.z;
-
-                //            Vector3 pos2 = new Vector3(x, Player.m_localPlayer.transform.position.y, z);
-                //            Player.m_localPlayer.TeleportTo(pos2, Player.m_localPlayer.transform.rotation, true);
-                //            MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, "Teleported to trader");
-                //        }
-                //        else
-                //        {
-                //            MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, "No trader found");
-                //        }
-                //    }
-                //}
-            }
-            catch (Exception ex)
-            {
-                MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, ex.Message);
+                _containerESP = !_containerESP;
+                MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Containers: " + _containerESP.ToString());
             }
 
-            //if (Input.GetKeyDown(KeyCode.Keypad5))
-            //{
-            //    string desktopPath = System.Environment.GetFolderPath(System.Environment.SpecialFolder.Desktop);
-            //    string savePath = desktopPath + "/ValheimLocations";
-            //    string fileName = "/KiandeServer.txt";
+            if (Input.GetKeyDown(KeyCode.Delete))
+            {
+                _playerESP = !_playerESP;
+                MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Players: " + _playerESP.ToString());
+            }
 
-            //    if (!Directory.Exists(savePath))
-            //    {
-            //        Directory.CreateDirectory(savePath);
-            //    }
+            if (Input.GetKeyDown(KeyCode.Home))
+            {
+                _monsterESP = !_monsterESP;
+                MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Monsters: " + _monsterESP.ToString());
+            }
 
-            //    if (Player.m_localPlayer)
-            //    {
-            //        string[] lines =
-            //        {
-            //                "--------------------------------------------",
-            //                Player.m_localPlayer.transform.position.ToString("F0"),
-            //                "--------------------------------------------"
-            //            };
+            if (Input.GetKeyDown(KeyCode.End))
+            {
+                smelterHack = !smelterHack;
+                MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Smelters: " + smelterHack.ToString());
 
-            //        File.AppendAllLines(savePath + fileName, lines);
+                List<Smelter> smelters = GameObject.FindObjectsOfType<Smelter>().ToList();
 
-            //        MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Location Saved");
-            //    }
-            //    else
-            //    {
-            //        MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "No localplayer");
-            //    }
-            //}
+                foreach (Smelter smelter in smelters)
+                {
+                    if (smelter.name.ToLower().Contains("kiln"))
+                    {
+                        smelter.m_secPerProduct = smelterHack ? 0.1f : 5;
+                    }
+                    else
+                    {
+                        smelter.m_maxOre = smelterHack ? 100 : m_maxOre;
+                        smelter.m_fuelPerProduct = smelterHack ? 0 : m_fuelPerProduct;
+                        smelter.m_secPerProduct = smelterHack ? 0.1f : m_secPerProduct;
+                    }
+                }
+
+                List<Fermenter> fermenters = GameObject.FindObjectsOfType<Fermenter>().ToList();
+
+                foreach (Fermenter fermenter in fermenters)
+                {
+                    fermenter.m_fermentationDuration = smelterHack ? 0.1f : m_fermentationDuration;
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Keypad8))
+            {
+                if (localPlayer)
+                {
+                    localPlayer.transform.position += localPlayer.transform.forward * 20f;
+
+                    Ship playerShip = localPlayer.GetControlledShip();
+
+                    if (playerShip)
+                    {
+                        playerShip.transform.position += playerShip.transform.forward * 20f;
+                    }
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Keypad6))
+            {
+                if (localPlayer)
+                {
+                    List<Tameable> wolves = GameObject.FindObjectsOfType<Tameable>()
+                        .Where(x => x.name.ToLower().StartsWith("wolf"))
+                        .Where(x => x.IsHungry())
+                        .ToList();
+
+                    GameObject rawMeat = ZNetScene.instance.GetPrefab("RawMeat");
+
+                    if (rawMeat)
+                    {
+                        foreach (Tameable wolf in wolves)
+                        {
+                                Vector3 b = UnityEngine.Random.insideUnitSphere * 0.5f;
+                                localPlayer.Message(MessageHud.MessageType.TopLeft, "Spawning raw meat near wolf " + wolf.name, 0, null);
+                                Character component3 = UnityEngine.Object.Instantiate<GameObject>(rawMeat, wolf.transform.position + wolf.transform.forward * 1f + Vector3.up + b, Quaternion.identity).GetComponent<Character>();
+                        }
+                    }
+
+                    List<Tameable> boars = GameObject.FindObjectsOfType<Tameable>()
+                        .Where(x => x.name.ToLower().StartsWith("boar"))
+                        .Where(x => x.IsHungry())
+                        .ToList();
+
+                    GameObject carrot = ZNetScene.instance.GetPrefab("Carrot");
+
+                    if (carrot)
+                    {
+                        foreach (Tameable boar in boars)
+                        {
+                            Vector3 b = UnityEngine.Random.insideUnitSphere * 0.5f;
+                            localPlayer.Message(MessageHud.MessageType.TopLeft, "Spawning carrot near boar " + boar.name, 0, null);
+                            Character component3 = UnityEngine.Object.Instantiate<GameObject>(carrot, boar.transform.position + boar.transform.forward * 1f + Vector3.up + b, Quaternion.identity).GetComponent<Character>();
+                        }
+                    }
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Keypad4))
+            {
+                if (localPlayer)
+                {
+                    Inventory playerInventory = localPlayer.GetInventory();
+
+                    playerInventory.AddItem("ArrowPoison", 100, 10, 0, localPlayer.GetPlayerID(), localPlayer.GetPlayerName());
+                    playerInventory.AddItem("ArrowFrost", 100, 10, 0, localPlayer.GetPlayerID(), localPlayer.GetPlayerName());
+                    //playerInventory.AddItem("ArrowFire", 100, 10, 0, localPlayer.GetPlayerID(), localPlayer.GetPlayerName());
+                    // playerInventory.AddItem("ArrowWood", 100, 10, 0, localPlayer.GetPlayerID(), localPlayer.GetPlayerName());
+
+                    // playerInventory.AddItem("GreydwarfEye", 20, 10, 0, 0, "");
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Keypad2))
+            {
+                if (localPlayer)
+                {
+                    Inventory playerInventory = localPlayer.GetInventory();
+
+                    playerInventory.AddItem("LoxPie", 10, 1, 0, localPlayer.GetPlayerID(), localPlayer.GetPlayerName());
+                    playerInventory.AddItem("FishWraps", 10, 1, 0, localPlayer.GetPlayerID(), localPlayer.GetPlayerName());
+                    playerInventory.AddItem("SerpentStew", 10, 1, 0, localPlayer.GetPlayerID(), localPlayer.GetPlayerName());
+
+
+                    // playerInventory.AddItem("Muckshake", 10, 1, 0, localPlayer.GetPlayerID(), localPlayer.GetPlayerName());
+                    // playerInventory.AddItem("Sausages", 10, 1, 0, localPlayer.GetPlayerID(), localPlayer.GetPlayerName());
+                    // playerInventory.AddItem("QueensJam", 10, 1, 0, localPlayer.GetPlayerID(), localPlayer.GetPlayerName());
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.PageUp))
+            {
+                _rockESP = !_rockESP;
+                MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Rocks: " + _rockESP.ToString());
+            }
+
+            if (Input.GetKeyDown(KeyCode.PageDown))
+            {
+                _pickableESP = !_pickableESP;
+                MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Pickables: " + _pickableESP.ToString());
+            }
+            
+            if (Input.GetKeyDown(KeyCode.Keypad0))
+            {
+                // Save Location
+                if (localPlayer)
+                {
+                    savedLocation = localPlayer.transform.position;
+                    MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, "Location saved!");
+                }
+
+                //this.menuOpen = !this.menuOpen;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Keypad1))
+            {
+                if (localPlayer && savedLocation != null)
+                {
+                    // Teleport to saved location
+                    float x = savedLocation.x;
+                    float z = savedLocation.z;
+
+                    float distance = Vector3.Distance(savedLocation, localPlayer.transform.position);
+
+                    localPlayer.Message(MessageHud.MessageType.Center, "Teleporting " + distance.ToString("F1"));
+
+                    Vector3 pos2 = new Vector3(x, localPlayer.transform.position.y, z);
+                    localPlayer.TeleportTo(pos2, localPlayer.transform.rotation, distance > 200f);
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Keypad3))
+            {
+               if (localPlayer)
+                {
+                    Inventory playerInventory = localPlayer.GetInventory();
+                    playerInventory.AddItem("FineWood", 50, 1, 0, 0, "");
+                    playerInventory.AddItem("ElderBark", 50, 1, 0, 0, "");
+                    playerInventory.AddItem("RoundLog", 50, 1, 0, 0, "");
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Keypad5))
+            {
+                if (localPlayer)
+                {
+                    Inventory playerInventory = localPlayer.GetInventory();
+
+                    playerInventory.AddItem("IronScrap", 50, 1, 0, 0, "");
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Keypad7))
+            {
+                if (localPlayer)
+                {
+                    godMode = !godMode;
+                    localPlayer.SetGodMode(godMode);
+                    MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, "God Mode " + godMode.ToString());
+
+                    Player.m_debugMode = godMode;
+                    localPlayer.SetPrivateField("m_noPlacementCost", godMode);
+                    localPlayer.m_staminaRegenDelay = godMode ? 0.1f : 1f;
+                    localPlayer.m_staminaRegen = godMode ? 99f : 5f;
+                    localPlayer.m_runStaminaDrain = godMode ? 0f : 10f;
+
+                    localPlayer.SetMaxStamina(godMode ? 999f : 100f, true);
+
+                    localPlayer.m_maxCarryWeight = godMode ? 9999f : 300f;
+
+                    
+
+                    localPlayer.SetGhostMode(godMode);
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.KeypadMinus))
+            {
+                if (localPlayer)
+                {
+                    Inventory playerInventory = localPlayer.GetInventory();
+
+                    playerInventory.AddItem("Stone", 50, 1, 0, 0, "");
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.KeypadPlus))
+            {
+                if (localPlayer)
+                {
+                    Inventory playerInventory = localPlayer.GetInventory();
+
+                    playerInventory.AddItem("Wood", 50, 1, 0, 0, "");
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                if (localPlayer)
+                {
+                    Inventory playerInventory = localPlayer.GetInventory();
+
+                    playerInventory.AddItem("Coal", 50, 1, 0, 0, "");
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Keypad9))
+            {
+                if (localPlayer)
+                {
+                    Inventory playerInv = localPlayer.GetInventory();
+
+                    if (playerInv != null)
+                    {
+                        List<ItemDrop.ItemData> items = playerInv.GetAllItems();
+
+                        if (items?.Count > 0)
+                        {
+                            foreach (ItemDrop.ItemData item in items)
+                            {
+                                if (item.IsEquipable())
+                                {
+                                    if (item.GetDurabilityPercentage() != 1f)
+                                    {
+                                        item.m_durability = item.GetMaxDurability();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    MessageHud.instance.ShowMessage(MessageHud.MessageType.TopLeft, "items repaired?");
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.KeypadPeriod))
+            {
+                if (localPlayer)
+                {
+                    Inventory playerInventory = localPlayer.GetInventory();
+                    playerInventory.AddItem("GreydwarfEye", 10, 0, 0, 0, "");
+                    playerInventory.AddItem("SurtlingCore", 2, 0, 0, 0, "");
+                    playerInventory.AddItem("FineWood", 20, 1, 0, 0, "");
+                }
+            }
         }
 
         public void OnGUI()
         {
+            if (this.menuOpen)
+            {
+                GUI.Box(new Rect(20, 50, 170, 150), "Wae Mod Menu");
+            }
+
             if (_containerESP)
             {
                 if (containers?.Count > 0)
@@ -250,11 +403,16 @@ namespace ValheimClient
                     {
                         Vector3 w2s = camera.WorldToScreenPoint(container.transform.position);
 
-                        bool IsVisible = w2s.z > -1;
+                        Inventory containerInventory = container.GetPrivateField<Inventory>("m_inventory");
 
-                        if (IsVisible)
+                        if (w2s.z > -1)
                         {
-                            DrawBox(w2s.x, Screen.height - w2s.y, 25 * 0.65f, 25f, texture, 1f);
+                            DrawBox(w2s.x, Screen.height - w2s.y, 25, 10, textureItem);
+                            var textStyle = new GUIStyle(GUI.skin.label);
+                            textStyle.fontSize = 12;
+                            textStyle.alignment = TextAnchor.MiddleCenter;
+                            textStyle.normal.textColor = Color.green;
+                            GUI.Label(new Rect(w2s.x - 150, Screen.height - w2s.y, 300, 25), String.Format("{0}/{1} Items ({2} ft.)", containerInventory.GetAllItems().Count, (containerInventory.GetWidth() * containerInventory.GetHeight()), Vector3.Distance(localPlayer.transform.position, container.transform.position).ToString("F1")), textStyle);
                         }
                     }
                 }
@@ -266,14 +424,17 @@ namespace ValheimClient
                 {
                     foreach (Player player in players)
                     {
-                        Vector3 w2s = camera.WorldToScreenPoint(player.GetHeadPoint());
+                        Vector3 w2s = camera.WorldToScreenPoint(player.transform.position);
 
-                        bool IsVisible = w2s.z > -1;
-
-                        if (IsVisible && !player.name.Contains("wae"))
+                        if (w2s.z > -1)
                         {
-                            float a = Math.Abs(camera.WorldToScreenPoint(player.GetHeadPoint()).y - camera.WorldToScreenPoint(player.transform.position).y);
-                            DrawBox(w2s.x, Screen.height - w2s.y, a * 0.65f, a, texture, 1f);
+                            DrawBox(w2s.x, Screen.height - w2s.y, 10, 20, texturePlayer);
+
+                            var textStyle = new GUIStyle(GUI.skin.label);
+                            textStyle.fontSize = 12;
+                            textStyle.alignment = TextAnchor.MiddleCenter;
+                            textStyle.normal.textColor = Color.white;
+                            GUI.Label(new Rect(w2s.x - 150, Screen.height - w2s.y, 300, 25), player.GetHoverName() + " (" + Vector3.Distance(localPlayer.transform.position, player.transform.position).ToString("F1") + " ft.)", textStyle);
                         }
                     }
                 }
@@ -283,17 +444,24 @@ namespace ValheimClient
             {
                 if (monsters?.Count > 0)
                 {
-                    foreach (MonsterAI monster in monsters)
+                    foreach (BaseAI monster in monsters)
                     {
-                        Character character = monster.GetComponent<Character>();
-                        Vector3 w2s = camera.WorldToScreenPoint(character.transform.position);
+                        Character character = monster.GetPrivateField<Character>("m_character");
 
-                        bool IsVisible = w2s.z > -1;
-
-                        if (IsVisible)
+                        if (character.m_health > 0)
                         {
-                            float a = Math.Abs(camera.WorldToScreenPoint(character.GetHeadPoint()).y - camera.WorldToScreenPoint(character.transform.position).y);
-                            DrawBox(w2s.x, Screen.height - w2s.y, a * 0.65f, a, texture, 1f);
+                            Vector3 w2s = camera.WorldToScreenPoint(monster.transform.position);
+                            if (w2s.z > -1)
+                            {
+
+                                DrawBox(w2s.x, Screen.height - w2s.y, 10, 20, textureEnemy);
+
+                                var textStyle = new GUIStyle(GUI.skin.label);
+                                textStyle.fontSize = 12;
+                                textStyle.alignment = TextAnchor.MiddleCenter;
+                                textStyle.normal.textColor = Color.red;
+                                GUI.Label(new Rect(w2s.x - 150, Screen.height - w2s.y, 300, 25), character.GetHoverName() + " (" + Vector3.Distance(localPlayer.transform.position, monster.transform.position).ToString("F1") + " ft.)", textStyle);
+                            }
                         }
                     }
                 }
@@ -307,26 +475,54 @@ namespace ValheimClient
                     {
                         Vector3 w2s = camera.WorldToScreenPoint(rock.transform.position);
 
-                        bool IsVisible = w2s.z > -1;
-
-                        if (IsVisible)
+                        if (w2s.z > -1)
                         {
-                            DrawBox(w2s.x, Screen.height - w2s.y, 25, 50, texture, 1f);
+                            DrawBox(w2s.x, Screen.height - w2s.y, 10, 10, textureItem);
+
+                            var textStyle = new GUIStyle(GUI.skin.label);
+                            textStyle.fontSize = 12;
+                            textStyle.alignment = TextAnchor.MiddleCenter;
+                            textStyle.normal.textColor = Color.green;
+                            GUI.Label(new Rect(w2s.x - 150, Screen.height - w2s.y, 300, 25), rock.GetHoverName() + " (" + Vector3.Distance(localPlayer.transform.position, rock.transform.position).ToString("F1") + " ft.)", textStyle);
                         }
                     }
                 }
 
-                if (mineRock5s?.Count > 0) {
+                if (mineRock5s?.Count > 0)
+                {
 
                     foreach (MineRock5 rock in mineRock5s)
                     {
                         Vector3 w2s = camera.WorldToScreenPoint(rock.transform.position);
 
-                        bool IsVisible = w2s.z > -1;
-
-                        if (IsVisible)
+                        if (w2s.z > -1)
                         {
-                            DrawBox(w2s.x, Screen.height - w2s.y, 25, 50, texture, 1f);
+                            DrawBox(w2s.x, Screen.height - w2s.y, 10, 10, textureItem);
+
+                            var textStyle = new GUIStyle(GUI.skin.label);
+                            textStyle.fontSize = 12;
+                            textStyle.alignment = TextAnchor.MiddleCenter;
+                            textStyle.normal.textColor = Color.green;
+                            GUI.Label(new Rect(w2s.x - 150, Screen.height - w2s.y, 300, 25), rock.GetHoverName() + " (" + Vector3.Distance(localPlayer.transform.position, rock.transform.position).ToString("F1") + " ft.)", textStyle);
+                        }
+                    }
+                }
+
+                if (bossStones?.Count > 0)
+                {
+                    foreach (Vegvisir stone in bossStones)
+                    {
+                        Vector3 w2s = camera.WorldToScreenPoint(stone.transform.position);
+
+                        if (w2s.z > -1)
+                        {
+                            DrawBox(w2s.x, Screen.height - w2s.y, 10, 10, textureItem);
+
+                            var textStyle = new GUIStyle(GUI.skin.label);
+                            textStyle.fontSize = 12;
+                            textStyle.alignment = TextAnchor.MiddleCenter;
+                            textStyle.normal.textColor = Color.green;
+                            GUI.Label(new Rect(w2s.x - 150, Screen.height - w2s.y, 300, 25), stone.m_locationName + " (" + Vector3.Distance(localPlayer.transform.position, stone.transform.position).ToString("F1") + " ft.)", textStyle);
                         }
                     }
                 }
@@ -340,11 +536,15 @@ namespace ValheimClient
                     {
                         Vector3 w2s = camera.WorldToScreenPoint(item.transform.position);
 
-                        bool IsVisible = w2s.z > -1;
-
-                        if (IsVisible)
+                        if (w2s.z > -1)
                         {
-                            DrawBox(w2s.x, Screen.height - w2s.y, 25, 50, texture, 1f);
+                            DrawBox(w2s.x, Screen.height - w2s.y, 10, 10, textureItem);
+
+                            var textStyle = new GUIStyle(GUI.skin.label);
+                            textStyle.fontSize = 12;
+                            textStyle.alignment = TextAnchor.MiddleCenter;
+                            textStyle.normal.textColor = Color.green;
+                            GUI.Label(new Rect(w2s.x - 150, Screen.height - w2s.y, 300, 25), item.GetHoverName() + " (" + Vector3.Distance(localPlayer.transform.position, item.transform.position).ToString("F1") + " ft.)", textStyle);
                         }
                     }
                 }
@@ -356,11 +556,15 @@ namespace ValheimClient
                     {
                         Vector3 w2s = camera.WorldToScreenPoint(item.transform.position);
 
-                        bool IsVisible = w2s.z > -1;
-
-                        if (IsVisible)
+                        if (w2s.z > -1)
                         {
-                            DrawBox(w2s.x, Screen.height - w2s.y, 25, 50, texture, 1f);
+                            DrawBox(w2s.x, Screen.height - w2s.y, 10, 10, textureItem);
+
+                            var textStyle = new GUIStyle(GUI.skin.label);
+                            textStyle.fontSize = 12;
+                            textStyle.alignment = TextAnchor.MiddleCenter;
+                            textStyle.normal.textColor = Color.green;
+                            GUI.Label(new Rect(w2s.x - 150, Screen.height - w2s.y, 300, 25), item.GetHoverName() + " (" + Vector3.Distance(localPlayer.transform.position, item.transform.position).ToString("F1") + " ft.)", textStyle);
                         }
                     }
                 }
@@ -372,6 +576,7 @@ namespace ValheimClient
             if (_containerESP)
             {
                 containers = GameObject.FindObjectsOfType<Container>()
+                    .Where(x => FindDistanceFromPlayer(x.transform.position) < 100f)
                     .Where(x => x.GetInventory().NrOfItems() > 0)
                     .ToList();
             }
@@ -382,8 +587,9 @@ namespace ValheimClient
 
             if (_playerESP)
             {
-                players = Player.GetAllPlayers()
-                    .Where(x => x.name != Player.m_localPlayer.name)
+                players = GameObject.FindObjectsOfType<Player>()
+                    .Where(x => FindDistanceFromPlayer(x.transform.position) < 100f)
+                    .Where(x => x.GetPlayerName() != localPlayer.GetPlayerName())
                     .ToList();
             }
             else
@@ -395,6 +601,7 @@ namespace ValheimClient
             if (_monsterESP)
             {
                 monsters = GameObject.FindObjectsOfType<MonsterAI>()
+                    .Where(x => FindDistanceFromPlayer(x.transform.position) < 100f)
                     .ToList();
             }
             else
@@ -405,11 +612,14 @@ namespace ValheimClient
             if (_rockESP)
             {
                 mineRocks = GameObject.FindObjectsOfType<MineRock>()
+                    .Where(x => FindDistanceFromPlayer(x.transform.position) < 100f)
                     .Where(x => x.m_name.ToLower() != "rock")
                     .ToList();
                 mineRock5s = GameObject.FindObjectsOfType<MineRock5>()
+                    .Where(x => FindDistanceFromPlayer(x.transform.position) < 100f)
                     .Where(x => x.m_name.ToLower() != "rock")
                     .ToList();
+                bossStones = GameObject.FindObjectsOfType<Vegvisir>().ToList();
             }
             else
             {
@@ -421,11 +631,11 @@ namespace ValheimClient
             {
                 pickables = GameObject.FindObjectsOfType<Pickable>()
                     .Where(x => FindDistanceFromPlayer(x.transform.position) < 100f)
-                    .Where(x => pickablesList.Contains(!string.IsNullOrEmpty(x.m_overrideName) ? x.m_overrideName.ToLower() : x.GetHoverName().ToLower()))
+                    .Where(x => x.GetHoverName().ToLower().Contains("thistle") || x.GetHoverName().ToLower().Contains("turnip"))
                     .ToList();
                 pickableItems = GameObject.FindObjectsOfType<PickableItem>()
                     .Where(x => FindDistanceFromPlayer(x.transform.position) < 100f)
-                    .Where(x => pickablesList.Contains(x.GetHoverName().ToLower()))
+                    .Where(x => x.GetHoverName().ToLower().Contains("thistle") || x.GetHoverName().ToLower().Contains("turnip"))
                     .ToList();
             }
             else
@@ -434,6 +644,26 @@ namespace ValheimClient
                 pickableItems = new List<PickableItem>();
             }
         }
+
+        //private void ShowMainMenu(int windowID)
+        //{
+        //    GUIStyle guiStyle = new GUIStyle(GUI.skin.box);
+        //    GUILayout.BeginVertical(new GUILayoutOption[0]);
+
+        //    var menuOptions = new List<MenuOption>
+        //    {
+        //        new MenuOption { Command = "/test", Description = "Test command", subMenuOptions =  new List<MenuOption> { } }
+        //    };
+
+        //    foreach (MenuOption option in menuOptions)
+        //    {
+        //        //if (selectedOption == option)
+        //        //{
+        //        //    GUI.color = Color.white;
+        //        //}
+        //        GUILayout.Label(option.Description, guiStyle, new GUILayoutOption[0]);
+        //    }
+        //}
 
         private void DrawBox(float x, float y, float width, float height, Texture2D text, float thickness = 1f)
         {
@@ -457,70 +687,5 @@ namespace ValheimClient
         {
             return Vector3.Distance(GameCamera.instance.transform.position, position);
         }
-
-        //private void HandleInput(string inputString)
-        //{
-        //    string[] parts = inputString.Split(' ');
-
-        //    if (parts.Length > 0)
-        //    {
-        //        string command = parts[0];
-
-        //        switch (command)
-        //        {
-        //            case "spawn":
-        //                string searchItem = parts[1];
-
-        //                int howMany = !String.IsNullOrEmpty(parts[2]) ? int.Parse(parts[2]) : 1;
-
-        //                GameObject prefab = ZNetScene.instance.GetPrefab(searchItem);
-        //                if (prefab)
-        //                {
-        //                    for (int i = 0; i < howMany; i++)
-        //                    {
-        //                        Character component2 = UnityEngine.Object.Instantiate<GameObject>(prefab, Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 2f + Vector3.up, Quaternion.identity).GetComponent<Character>();
-        //                    }
-
-        //                    MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "Spawned " + parts[1]);
-        //                }
-
-        //                break;
-        //            case "coords":
-        //                if (Player.m_localPlayer)
-        //                {
-        //                    System.Console.WriteLine(Player.m_localPlayer.transform.position.ToString("F0"));
-        //                }
-        //                break;
-        //            case "tp":
-        //                if (Player.m_localPlayer)
-        //                {
-
-        //                }
-        //                break;
-        //            case "tp2":
-        //                if (!string.IsNullOrEmpty(parts[1]))
-        //                {
-        //                    System.Console.WriteLine("you suck");
-        //                }
-        //                else
-        //                {
-        //                    string searchPlayer = parts[1];
-        //                    Player player = Player.GetAllPlayers().FirstOrDefault(x => x.m_name.ToLower() == searchPlayer.ToLower());
-
-        //                    if (player && Player.m_localPlayer)
-        //                    {
-        //                        Player.m_localPlayer.transform.position = player.transform.position;
-        //                    }
-        //                }
-        //                break;
-        //            case "exit":
-        //                exit = true;
-        //                break;
-        //            default:
-        //                System.Console.WriteLine("No command found for " + command);
-        //                break;
-        //        }
-        //    }
-        //}
     }
 }
